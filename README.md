@@ -33,7 +33,21 @@ scripts/
   check-test.cjs     every plan check has a result and evidence
   check-sections.cjs generic table/section gate (design, architecture)
 commands/feature.md  the /feature entry point
+instructions/
+  clear-explanations.md  always-on rules for replies, comments and JSDoc
 ```
+
+`opencode.jsonc` adds `instructions/clear-explanations.md` to every session.
+`AGENTS.md` is the other always-on file and holds only cross-project safety and
+language rules; the pipeline itself is loaded only when `/feature` runs.
+
+Scripts are invoked as `node "$HOME/.config/opencode/scripts/<script>.cjs"`.
+`$HOME` resolves in PowerShell and in POSIX shells, so the same instruction works
+for any user instead of naming one home directory.
+
+`agents/*.md` and `commands/*.md` start with YAML frontmatter. A scalar that
+contains `: ` must be quoted; otherwise the parser reads a nested mapping and the
+file fails to load.
 
 `service.json` is local state, not configuration to share: it holds the password
 OpenCode clients use to authenticate to the background service. Never commit or
@@ -41,7 +55,7 @@ publish it.
 
 ## Use
 
-1. In a project, run `/feature <description>` (optionally `light|standard|full`).
+1. In a project, run `/feature <description>` (optionally `standard|full`).
 2. First run only: the orchestrator derives `.opencode/steps/rules.md` and shows
    it to you. Approve it once — that file is the spec every analysis is checked
    against.
@@ -54,15 +68,17 @@ publish it.
 
 | Mode | Steps | Worker calls |
 |---|---|---|
-| `light` | analysis → plan → implement → close | ≤6 |
 | `standard` | analysis → (design) → (architecture) → plan → implement → (test smoke) → close | ≤12 |
 | `full` | analysis → (design) → architecture → plan → implement → (test audit) → close | ≤16 |
 
 The budget counts worker calls; `test` is the orchestrator's own step. `design`
 runs only when the analysis carries `ui` or `a11y` risk. `architecture` runs only
 for more than 10 files, an auth/money/migration/public risk, or `full` mode.
-`test` runs only when the plan has a `visual` AC and the mode is not `light`; the
-orchestrator runs it itself because a worker has no browser.
+`test` runs when the plan has a `visual` AC; the orchestrator runs it itself
+because a worker has no browser.
+
+There is no `light` mode: work that fits in a single edit is one prompt to
+`build`, not a feature with artifacts.
 
 ## Budgets and gates
 
@@ -83,6 +99,11 @@ there is no header repair call: a forgotten seal is fixed by running the script.
 A gate failure is content; report it, never reopen a worker to rewrite content,
 never a review, never a search for omissions. `test` is not a worker call: the
 orchestrator writes and seals that report directly.
+
+`files_touched` is audited against a snapshot of every file in the plan, taken
+just before the step. If a step touches a file that belongs to a neighbouring
+step, it appears in `changed`, so the trace shows the real blast radius even when
+the orchestrator had to grant that file.
 
 ## Evolution
 

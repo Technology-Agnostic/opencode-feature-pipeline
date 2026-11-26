@@ -19,7 +19,7 @@ Do not read the plan (it does not exist yet) or other artifacts.
 
 `.opencode/plans/<slug>/architecture.md`, at most 45 body lines (60 in full).
 
-Run `artifact.cjs init` (the packet gives `out`), fill the body and the machine block, then run `artifact.cjs seal`. `seal` writes the YAML header and runs `check-sections`; if the gate fails, it returns the violations, so fix the body and run it again. Never write YAML frontmatter.
+Run `node "$HOME/.config/opencode/scripts/artifact.cjs" init` (the packet gives `out`), fill the body and the machine block, then run `artifact.cjs seal`. `seal` writes the YAML header and runs `check-sections`; if the gate fails, it returns the violations, so fix the body and run it again. Never write YAML frontmatter.
 
 ```markdown
 <!-- machine

@@ -49,12 +49,12 @@ attached to its session.
 1. Read the packet, then the contract it names.
 2. Read only the artifacts the packet lists and the files that contract allows.
 3. Create the artifact with
-   `node C:\Users\kekss\.config\opencode\scripts\artifact.cjs init --step <step> --out <out>`,
+   `node "$HOME/.config/opencode/scripts/artifact.cjs" init --step <step> --out <out>`,
    then fill the body and the machine block. If the file already exists (an
    `analysis` second attempt), edit its body and machine block instead; init is
    only for a new file.
 4. Seal it with
-   `node C:\Users\kekss\.config\opencode\scripts\artifact.cjs seal --step <step> --out <out>`.
+   `node "$HOME/.config/opencode/scripts/artifact.cjs" seal --step <step> --out <out>`.
    Seal writes the YAML header and runs the gate; if it exits 1, fix the body and
    run it again. Never write YAML frontmatter and never edit the sealed header.
    The router re-runs the gate and its numbers win.

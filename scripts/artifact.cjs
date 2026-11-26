@@ -147,9 +147,13 @@ function init(step, out, feature, stepId) {
   if (step === 'implement' && stepId) {
     planFile = path.join(path.dirname(target), '..', 'plan.md');
     if (fs.existsSync(planFile)) {
-      const item = parsePlan(planFile).steps.find(candidate => candidate.id === stepId);
+      const plan = parsePlan(planFile);
+      const item = plan.steps.find(candidate => candidate.id === stepId);
       if (item?.acceptance) verifyCmd = item.acceptance;
-      planFiles = item?.files || [];
+      // Hash the whole plan, not just this step's list. A step can be granted a
+      // file that belongs to a neighbouring step; a per-step baseline would drop
+      // that edit from `changed` and the audit would silently miss it.
+      planFiles = unionFiles(plan.steps);
     }
   }
   const title = step === 'implement' ? `# Step report: ${stepId || 'S-01'}` : `# ${TITLES[step]}: ${feature || featureFrom(target) || ''}`;
@@ -194,6 +198,10 @@ function parsePlan(planFile) {
     if (inVisual && /^\|\s*V-\d+\s*\|/.test(line)) visual += 1;
   }
   return { steps, visual };
+}
+
+function unionFiles(steps) {
+  return [...new Set(steps.flatMap(step => step.files))];
 }
 
 function gitChanged(files) {
@@ -244,7 +252,7 @@ function writeBaseline(out, stepId, files) {
   fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8');
 }
 
-function changedSinceBaseline(out, stepId, files) {
+function changedSinceBaseline(out, stepId) {
   const file = baselinePath(out, stepId);
   if (!fs.existsSync(file)) return null;
   let data;
@@ -254,7 +262,10 @@ function changedSinceBaseline(out, stepId, files) {
     return null;
   }
   if (data.step !== stepId || !data.files) return null;
-  return files.filter(name => hashFile(name) !== (data.files[name] ?? null));
+  // Compare every file init hashed. The baseline already scopes the check to the
+  // time between init and seal, so using the whole plan here keeps "this step"
+  // accurate and still reports a file borrowed from another step.
+  return Object.keys(data.files).filter(name => hashFile(name) !== (data.files[name] ?? null));
 }
 
 // --- seal -----------------------------------------------------------------
@@ -324,12 +335,14 @@ function seal(step, out, worker, feature) {
     metrics.steps_done = index + 1;
     metrics.steps_planned = plan.steps.length;
     metrics.visual_checks = plan.visual;
-    const fromBaseline = changedSinceBaseline(out, stepId, item.files);
+    const fromBaseline = changedSinceBaseline(out, stepId);
     if (fromBaseline) {
       changed = fromBaseline;
     } else {
       // Older runs and hand-written reports have no baseline; keep the expanded
-      // git fallback so an untracked new directory still reports its files.
+      // git fallback so an untracked new directory still reports its files. It
+      // stays limited to the step's own list: without a pre-step snapshot there
+      // is no way to tell which plan file this call changed.
       changed = gitChanged(item.files);
     }
     metrics.files_touched = changed.length;

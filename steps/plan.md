@@ -19,7 +19,7 @@ ACs already exist: do not invent new ones.
 
 `.opencode/plans/<slug>/plan.md`, at most 80 body lines (100 in full).
 
-Run `artifact.cjs init` (the packet gives `out`), fill the body and the machine block, then run `artifact.cjs seal`. `seal` writes the YAML header and runs `check-plan`; if the gate fails, it returns the violations, so fix the body and run it again. Never write YAML frontmatter.
+Run `node "$HOME/.config/opencode/scripts/artifact.cjs" init` (the packet gives `out`), fill the body and the machine block, then run `artifact.cjs seal`. `seal` writes the YAML header and runs `check-plan`; if the gate fails, it returns the violations, so fix the body and run it again. Never write YAML frontmatter.
 
 ```markdown
 <!-- machine
@@ -57,7 +57,8 @@ refs: S-01, AC-01.1
   If the step owns the wiring, include its integration spec.
 - `acceptance` proves the `unit` ACs of the step. A `visual` AC is proven by the
   test step and has a `V` row instead.
-- 4–8 steps. More means the feature is too big: say so and recommend a split.
+- 1–9 steps. A small feature can be one step; more than 9 means the feature is
+  too big: say so and recommend a split.
 
 ## Metrics
 

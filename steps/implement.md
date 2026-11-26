@@ -22,7 +22,7 @@ history. If a needed file is outside `files_allowed`, stop with
 1. The code and tests for the step.
 2. `.opencode/plans/<slug>/steps/<S-xx>.md`, at most 20 body lines (25 in full).
 
-Create it with `artifact.cjs init --step implement --step-id <S-xx>`, fill the body and the machine block, then run `artifact.cjs seal --step implement`. `seal` writes the YAML header, reads the plan for `steps_done`, `steps_planned` and `visual_checks`, and compares the step's files with the baseline hashes that `init` recorded before you started. If no baseline exists, it falls back to `git status --untracked-files=all`. Never write YAML frontmatter.
+Create it with `node "$HOME/.config/opencode/scripts/artifact.cjs" init --step implement --step-id <S-xx>`, fill the body and the machine block, then run `artifact.cjs seal --step implement`. `seal` writes the YAML header, reads the plan for `steps_done`, `steps_planned` and `visual_checks`, and compares the plan's files with the baseline hashes that `init` recorded before you started. If no baseline exists, it falls back to `git status --untracked-files=all`. Never write YAML frontmatter.
 
 ```markdown
 <!-- machine
@@ -53,7 +53,10 @@ verify_failed: 0
 
 - `step` — the plan step id; you write it in the machine block;
 - `steps_done` / `steps_planned` — seal reads them from the plan;
-- `files_touched` — seal compares the plan's files with the `init` baseline (fallback: `git status -uall`);
+- `files_touched` — seal compares every file in the plan with the `init` baseline
+  (fallback: `git status -uall`). It can exceed your step's list when the
+  orchestrator granted a file from a neighbouring step. That is the audit trail,
+  not a wider permission: keep writing only `files_allowed`.
 - `tests_added` — new test cases; you write it in the machine block;
 - `deviations` — places where the code differs from the plan; you write the
   count in the machine block. It is a note for the final report, not a reason

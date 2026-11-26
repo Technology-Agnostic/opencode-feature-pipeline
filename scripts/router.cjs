@@ -3,7 +3,7 @@
 // the YAML frontmatter of an artifact — validates it mechanically, applies the
 // transition table, and appends a ledger row. It never reads the artifact body.
 //
-// usage: node router.cjs <artifact.md> [--verify] [--mode light|standard|full]
+// usage: node router.cjs <artifact.md> [--verify] [--mode standard|full]
 //                                  [--attempt N] [--ledger <ledger.md>]
 //
 // Exit 0 when the header is valid, 1 when it is not.
@@ -15,7 +15,7 @@ const { budgetFor, parse, runGate } = require('./lib/gates.cjs');
 const argv = process.argv.slice(2);
 const file = argv[0];
 if (!file) {
-  console.error('usage: node router.cjs <artifact.md> [--verify] [--mode light|standard|full] [--attempt N] [--ledger <ledger.md>]');
+  console.error('usage: node router.cjs <artifact.md> [--verify] [--mode standard|full] [--attempt N] [--ledger <ledger.md>]');
   process.exit(2);
 }
 const flag = (name) => {
@@ -75,7 +75,7 @@ if (header.changed !== undefined && !Array.isArray(header.changed)) v.push('chan
 
 const step = header.step;
 if (step && !METRICS[step]) v.push(`unknown step: ${step}`);
-if (step && !['light', 'standard', 'full'].includes(mode)) v.push(`unknown mode: ${mode}`);
+if (step && !['standard', 'full'].includes(mode)) v.push(`unknown mode: ${mode}`);
 
 if (header.status === 'done') {
   // Only steps with a real project command need a verify object. Read steps are
@@ -161,8 +161,14 @@ function runCommand(cmd) {
   // shims go through cmd.exe as one command line; `node` stays direct.
   if (process.platform === 'win32' && /\.(cmd|bat)$/i.test(bin)) {
     const line = [bin, ...args].map(quoteArg).join(' ');
-    return execFileSync(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', line], {
+    return execFileSync(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', `"${line}"`], {
       cwd: process.cwd(), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
+      // Two things must hold at once. Node must not re-quote the line: it escapes
+      // quotes as \" and cmd.exe does not understand that. And cmd.exe with /s
+      // strips exactly one outer pair of quotes, so the line needs that pair even
+      // when it already starts with a quoted path; otherwise a command such as
+      // "C:\tools\npm.cmd" run build loses its first quote and the path breaks.
+      windowsVerbatimArguments: true,
     });
   }
   return execFileSync(bin, args, { cwd: process.cwd(), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
@@ -197,7 +203,11 @@ if (has('--verify') && header.status === 'done') {
       gate = parse(runCommand(header.verify.cmd));
     } catch (e) {
       gate = { ...(gate || {}), error: String(e.stdout || e.message).slice(0, 400) };
-      v.push('project command failed');
+      // A missing binary and a red test both land here. The exit code tells them
+      // apart: a number means the command ran and failed, so the trace should not
+      // look like a broken harness. A launch failure has no exit status.
+      const why = typeof e.status === 'number' ? `exit ${e.status}` : 'could not start';
+      v.push(`project command failed (${why})`);
     }
   }
   const ran = runGate(step, file);
@@ -243,9 +253,6 @@ if (header.status && header.status !== 'done') {
     reason = attempt >= 2
       ? `${blocking} blocking question(s) still open after one answer round`
       : `${blocking} blocking question(s); ask the user, then re-run analysis`;
-  } else if (mode === 'light') {
-    decision = 'plan';
-    reason = 'light mode: requirements only';
   } else if (wantsDesign) {
     decision = 'design';
     reason = 'ui/a11y risk: design before the plan';
@@ -276,9 +283,6 @@ if (header.status && header.status !== 'done') {
   if (done < planned) {
     decision = 'implement';
     reason = `${done}/${planned} steps done`;
-  } else if (mode === 'light') {
-    decision = 'close';
-    reason = 'all steps done; light mode has no test step';
   } else if (Number(metrics.visual_checks ?? 0) > 0) {
     decision = 'test';
     reason = 'all steps done; visual checks remain';

@@ -22,7 +22,7 @@ reason to read source.
 
 `.opencode/plans/<slug>/test-report.md`, at most 40 body lines (55 in full).
 
-Run `artifact.cjs init --step test --out .opencode/plans/<slug>/test-report.md` (this step has no packet, so pass `--out` explicitly), fill the body and the machine block, then run `artifact.cjs seal --step test`. If `test-report.md` already exists from a blocked run, replace its body and machine block; init only creates a new file. `seal` writes the YAML header and runs `check-test`; if the gate fails, it returns the violations, so fix the body and run it again. Never write YAML frontmatter.
+Run `node "$HOME/.config/opencode/scripts/artifact.cjs" init --step test --out .opencode/plans/<slug>/test-report.md` (this step has no packet, so pass `--out` explicitly), fill the body and the machine block, then run `artifact.cjs seal --step test`. If `test-report.md` already exists from a blocked run, replace its body and machine block; init only creates a new file. `seal` writes the YAML header and runs `check-test`; if the gate fails, it returns the violations, so fix the body and run it again. Never write YAML frontmatter.
 
 ```markdown
 <!-- machine

@@ -52,13 +52,13 @@ and you do not call other agents.
    - the code and tests in `files_allowed`;
    - the artifact at `out`.
 4. Create the report with
-   `node C:\Users\kekss\.config\opencode\scripts\artifact.cjs init --step implement --step-id <S-xx> --out <out>`,
+   `node "$HOME/.config/opencode/scripts/artifact.cjs" init --step implement --step-id <S-xx> --out <out>`,
    then fill the body and the machine block.
 5. Run the build and the acceptance command. Put the real numbers in the machine
    block (`verify_cmd`, `verify_exit`, `verify_passed`, `verify_failed`). Never
    estimate them.
 6. Seal with
-   `node C:\Users\kekss\.config\opencode\scripts\artifact.cjs seal --step implement --out <out>`.
+   `node "$HOME/.config/opencode/scripts/artifact.cjs" seal --step implement --out <out>`.
    Seal writes the header and derives `steps_done`, `steps_planned`,
    `files_touched` and `visual_checks`. Never write YAML frontmatter.
 7. If the step cannot be finished, set `status: blocked` in the machine block and

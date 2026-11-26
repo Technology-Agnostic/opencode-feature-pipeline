@@ -6,10 +6,10 @@ subagent: false
 
 New feature: $ARGUMENTS
 
-If the request starts with `light`, `standard`, or `full`, treat that word as
-the mode and remove it from the description. Otherwise apply the mode matrix in
-the orchestrator: the default is `standard`, and if it is unclear between two
-modes, choose the higher one. Record the mode and one line of reasoning in
+If the request starts with `standard` or `full`, treat that word as the mode and
+remove it from the description. Otherwise apply the mode matrix in the
+orchestrator: the default is `standard`, and if it is unclear between the two
+modes, choose `full`. Record the mode and one line of reasoning in
 `progress.md`.
 
 Run the chain from the orchestrator:
@@ -25,7 +25,7 @@ Run the chain from the orchestrator:
 4. `architecture` with `worker-read`, only when the change is larger than 10
    files, has an auth/money/migration/public risk, or mode is `full` →
    `architecture.md`.
-5. `plan` with `worker-read` → `plan.md`: 4–8 steps with `acs`, `files`,
+5. `plan` with `worker-read` → `plan.md`: 1–9 steps with `acs`, `files`,
    `acceptance`, plus the `## Visual checks` table (`V | AC | scenario |
    expected | viewport`).
 6. `implement` with `worker-prod`, one step per call → code, tests,

@@ -26,8 +26,9 @@ for (const line of lines) {
   }
   const [, step, decision, reason, , time] = cells;
   // A project-command reject is the router re-running the worker's acceptance
-  // command and failing to start it; the worker was not called again. Every other
-  // row belongs to a model call: accepted, human, or a rejected artifact.
+  // command; the worker was not called again. The row documents a router run, not
+  // a model call. Every other row belongs to a model call: accepted, human, or a
+  // rejected artifact.
   const model = !(decision === 'reject' && /^project command failed/i.test(String(reason)));
   rows.push({ id: cells[0], step, decision, reason, time, model });
 }

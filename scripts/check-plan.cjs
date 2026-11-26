@@ -66,7 +66,7 @@ for (const line of lines) {
 }
 
 if (steps.length === 0) violations.push('no steps');
-if (steps.length > 8) violations.push(`${steps.length} steps: split the feature`);
+if (steps.length > 9) violations.push(`${steps.length} steps: split the feature`);
 
 const assigned = new Map();
 for (const step of steps) {
