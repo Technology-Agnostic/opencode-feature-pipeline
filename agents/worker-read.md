@@ -50,9 +50,9 @@ attached to its session.
 2. Read only the artifacts the packet lists and the files that contract allows.
 3. Create the artifact with
    `node "$HOME/.config/opencode/scripts/artifact.cjs" init --step <step> --out <out>`,
-   then fill the body and the machine block. If the file already exists (an
-   `analysis` second attempt), edit its body and machine block instead; init is
-   only for a new file.
+   then fill the body and the machine block. If the file already exists (a
+   question re-run with `attempt: 2`), edit its body and machine block instead;
+   init is only for a new file.
 4. Seal it with
    `node "$HOME/.config/opencode/scripts/artifact.cjs" seal --step <step> --out <out>`.
    Seal writes the YAML header and runs the gate; if it exits 1, fix the body and
@@ -69,6 +69,11 @@ attached to its session.
   per rule and the repo compiling after every step.
 - `plan`: executable steps plus the visual checks. The ACs already exist; do not
   invent new ones.
+
+Every read step may ask the user when it hits a decision it must not guess. Put
+such a question in `## Open questions` with `Blocking: yes` and a
+recommendation. Prefer asking in `analysis`; a later step asks only when the
+answer genuinely cannot be reached from the analysis.
 
 # What you must not do
 

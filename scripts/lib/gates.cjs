@@ -19,17 +19,17 @@ function findRules(file) {
 }
 
 // The step contract is the only place that states a body budget. Both seal and
-// the router read the same line, so the packet cannot invent a third number and
+// the router read the same line, so the packet cannot invent a second number and
 // the two gates cannot drift. The contract phrases it as:
-//   at most 50 body lines (90 in full)
-function budgetFor(step, mode = 'standard') {
+//   at most 50 body lines
+function budgetFor(step) {
   if (!step) return null;
   const contract = path.join(__dirname, '..', '..', 'steps', `${step}.md`);
   if (!fs.existsSync(contract)) return null;
   const text = fs.readFileSync(contract, 'utf8');
-  const match = text.match(/at most\s+(\d+)\s+body lines(?:\s*\([^)]*?(\d+)\s+in full\))?/i);
+  const match = text.match(/at most\s+(\d+)\s+body lines/i);
   if (!match) return null;
-  return Number(mode === 'full' ? (match[2] || match[1]) : match[1]);
+  return Number(match[1]);
 }
 
 const GATES = {
@@ -40,12 +40,14 @@ const GATES = {
   design: {
     script: 'check-sections.cjs',
     args: () => ['--require', '## Screens', '## States', '## Responsive', '## Accessibility', '## Copy',
-      '--table', '## Screens', '--columns', 'ID,Screen,States,Notes', '--min-rows', '1'],
+      '--table', '## Screens', '--columns', 'ID,Screen,States,Notes', '--min-rows', '1',
+      '--questions', '## Open questions'],
   },
   architecture: {
     script: 'check-sections.cjs',
     args: () => ['--require', '## Modules', '## Interfaces', '## Change scope', '## Migration order',
-      '--table', '## Modules', '--columns', 'ID,Module,Files,Responsibility', '--min-rows', '1'],
+      '--table', '## Modules', '--columns', 'ID,Module,Files,Responsibility', '--min-rows', '1',
+      '--questions', '## Open questions'],
   },
   plan: {
     script: 'check-plan.cjs',

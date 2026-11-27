@@ -4,26 +4,26 @@ A feature runs as a chain of typed steps:
 `analysis → (design) → (architecture) → plan → implement ×N → (test) → close`.
 The worker steps are `analysis`, `design`, `architecture`, `plan` and
 `implement`; `test` and `close` run in the orchestrator because that is where the
-browser and the shell live. `design` and `architecture` are added only when the
-feature needs them. A deterministic router reads the artifact frontmatter and
-decides what runs next; gates are scripts, not opinions.
+browser and the shell live. `design` and `architecture` run only when the user
+asks for them — a deterministic router validates each artifact and recommends a
+scope, and the user decides. Gates are scripts, not opinions.
 
 ## Files
 
 ```
 agents/
-  orchestrator.md    router: packets, routing, ledger, close (primary)
+  orchestrator.md    router + human interface: packets, routing, scope, grants, ledger, close (primary)
   worker-prod.md     implement only: code + tests
   worker-read.md     analysis, design, architecture, plan
 steps/
   analysis.md        brief -> ACs + questions + rule coverage
-  design.md          UI/UX, only for ui/a11y risk
+  design.md          UI/UX, only when the user asks for it
   architecture.md    modules, files, interfaces, migration order
   plan.md            steps + visual checks
   implement.md       one step -> code + tests + steps/S-xx.md
   test.md            visual checks on the running app (orchestrator)
 scripts/
-  router.cjs         validate frontmatter, run the gate, decide, append to ledger
+  router.cjs         validate frontmatter, run the gate, recommend scope, decide, append to ledger
   artifact.cjs       init a machine block, seal it into frontmatter
   ledger-summary.cjs counts for progress.md and retro.md
   lib/gates.cjs      the single source of gate specs and body budgets
@@ -55,50 +55,66 @@ publish it.
 
 ## Use
 
-1. In a project, run `/feature <description>` (optionally `standard|full`).
+1. In a project, run `/feature <description>`.
 2. First run only: the orchestrator derives `.opencode/steps/rules.md` and shows
    it to you. Approve it once — that file is the spec every analysis is checked
    against.
-3. Watch `.opencode/plans/<slug>/ledger.md`: one row per routed artifact,
+3. After `analysis`, the router asks whether to run `design` and/or
+   `architecture`, marking a recommendation. Answer, then the run continues with
+   the steps you chose.
+4. Watch `.opencode/plans/<slug>/ledger.md`: one row per routed artifact,
    including rejects, with the decision and its reason.
-4. `progress.md` is the human summary; `retro.md` says which steps paid for
+5. `progress.md` is the human summary; `retro.md` says which steps paid for
    themselves.
 
-## Modes
+## Scope
 
-| Mode | Steps | Worker calls |
-|---|---|---|
-| `standard` | analysis → (design) → (architecture) → plan → implement → (test smoke) → close | ≤12 |
-| `full` | analysis → (design) → architecture → plan → implement → (test audit) → close | ≤16 |
+There are no modes. `analysis` is the only mandatory read step; `design` and
+`architecture` run when you say so. The router recommends:
 
-The budget counts worker calls; `test` is the orchestrator's own step. `design`
-runs only when the analysis carries `ui` or `a11y` risk. `architecture` runs only
-for more than 10 files, an auth/money/migration/public risk, or `full` mode.
-`test` runs when the plan has a `visual` AC; the orchestrator runs it itself
-because a worker has no browser.
+- `design` — when the analysis carries `ui` or `a11y` risk;
+- `architecture` — when the change touches more than 10 files or has an
+  auth/money/migration/public risk.
 
-There is no `light` mode: work that fits in a single edit is one prompt to
-`build`, not a feature with artifacts.
+You accept or override the recommendation; the answer is written to
+`.opencode/plans/<slug>/scope.md` and the router routes from it. `test` runs when
+the plan has a `visual` AC; the orchestrator runs it itself because a worker has
+no browser. There is no `light` mode: work that fits in a single edit is one
+prompt to `build`, not a feature with artifacts.
+
+## Questions and grants
+
+Two pauses are recoverable, and both are bounded:
+
+- **A blocking question.** Any read step (analysis, design, architecture, plan)
+  may put a question in `## Open questions` with `Blocking: yes`. The orchestrator
+  asks you, then re-runs that step once with the answer (`attempt: 2`). One answer
+  round per step. Prefer asking in `analysis`; a later step asks only when the
+  answer cannot be reached from the analysis.
+- **A grant.** An `implement` step that needs a file outside its `files_allowed`
+  returns `needs_input` with `needs_files`. The orchestrator appends those files
+  to the plan and re-runs the same step. One grant per step.
 
 ## Budgets and gates
 
 An artifact budget counts **body lines only**: blank lines and the frontmatter
-do not count. `full` mode has a larger cap because the same step has more states
-and checks to describe. An overrun is recorded as a warning, not a repair: a
-repair call costs more than the extra lines. Only twice the budget rejects. The
-limit itself is stated once, in the step contract (`at most N body lines`); both
-`seal` and the router read it from there. The router runs `check-analysis`,
-`check-plan`, `check-test` or `check-sections` itself; the model does not print a
-gate command. A gate-derived metric that disagrees with the gate is corrected and
-recorded in the ledger, not turned into a repair call.
+do not count. An overrun is recorded as a warning, not a repair: a repair call
+costs more than the extra lines. Only twice the budget rejects. The limit itself
+is stated once, in the step contract (`at most N body lines`); both `seal` and
+the router read it from there. The router runs `check-analysis`, `check-plan`,
+`check-test` or `check-sections` itself; the model does not print a gate command.
+A gate-derived metric that disagrees with the gate is corrected and recorded in
+the ledger, not turned into a repair call.
 
 ## One-shot calls
 
 Every worker step is one fresh call. `artifact.cjs seal` writes the header, so
 there is no header repair call: a forgotten seal is fixed by running the script.
 A gate failure is content; report it, never reopen a worker to rewrite content,
-never a review, never a search for omissions. `test` is not a worker call: the
-orchestrator writes and seals that report directly.
+never a review, never a search for omissions. The worker's `verify.cmd` result is
+trusted — the router does not re-run the project command; `test` and `close` run
+the full build and suite once. `test` is not a worker call: the orchestrator
+writes and seals that report directly.
 
 `files_touched` is audited against a snapshot of every file in the plan, taken
 just before the step. If a step touches a file that belongs to a neighbouring

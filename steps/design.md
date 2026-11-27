@@ -1,8 +1,9 @@
 # Step contract: design
 
 Turn the analysis into a UI/UX decision: what the user sees, in which states, at
-which widths, with which keyboard and copy. This step runs only when the
-analysis has `ui` or `a11y` risk. You write no code.
+which widths, with which keyboard and copy. This step runs only when the user
+asks for it — the analysis recommends it when it carries `ui` or `a11y` risk.
+You write no code.
 
 ## Inputs you may read
 
@@ -16,7 +17,7 @@ Do not read the plan (it does not exist yet), other artifacts or git history.
 
 ## Output
 
-`.opencode/plans/<slug>/design.md`, at most 50 body lines (90 in full).
+`.opencode/plans/<slug>/design.md`, at most 50 body lines.
 
 Run `node "$HOME/.config/opencode/scripts/artifact.cjs" init` (the packet gives `out`), fill the body and the machine block, then run `artifact.cjs seal`. `seal` writes the YAML header and runs `check-sections`; if the gate fails, it returns the violations, so fix the body and run it again. Never write YAML frontmatter.
 
@@ -49,6 +50,11 @@ risk_flags: ui, a11y
 
 ## Copy
 - <keys under the existing namespace; both locales; plural-safe wording>
+
+## Open questions
+| ID | Blocking | Question | Recommendation |
+|----|----------|----------|----------------|
+| Q-01 | no | <what needs a product decision> | <what you recommend> |
 ```
 
 ## Metrics
@@ -58,7 +64,8 @@ risk_flags: ui, a11y
 - `a11y_checks` — keyboard, focus, labels, contrast checks you specified;
 - `files_estimate` — rough count the design implies (the plan refines it);
 - `risk_flags` — copied from the analysis; the router uses it to decide whether
-  architecture is still needed after the design.
+  architecture is still needed after the design;
+- `questions_blocking` — questions with `Blocking: yes` (the gate counts them).
 
 ## Hard rules
 
@@ -70,5 +77,6 @@ risk_flags: ui, a11y
 - Every user-facing string goes through the project's i18n layer and exists in
   every supported locale.
 - No code, no file contents, no implementation steps. The plan owns those.
-- If a screen cannot be designed without a product answer, return
-  `status: needs_input` and name the missing decision.
+- A question that changes the design is `Blocking: yes` in `## Open questions`
+  with a recommendation. Never choose silently. Ask as soon as it appears; do
+  not guess and bury the guess in a note.

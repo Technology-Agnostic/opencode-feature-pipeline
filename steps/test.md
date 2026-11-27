@@ -20,7 +20,7 @@ reason to read source.
 
 ## Output
 
-`.opencode/plans/<slug>/test-report.md`, at most 40 body lines (55 in full).
+`.opencode/plans/<slug>/test-report.md`, at most 40 body lines.
 
 Run `node "$HOME/.config/opencode/scripts/artifact.cjs" init --step test --out .opencode/plans/<slug>/test-report.md` (this step has no packet, so pass `--out` explicitly), fill the body and the machine block, then run `artifact.cjs seal --step test`. If `test-report.md` already exists from a blocked run, replace its body and machine block; init only creates a new file. `seal` writes the YAML header and runs `check-test`; if the gate fails, it returns the violations, so fix the body and run it again. Never write YAML frontmatter.
 
@@ -68,9 +68,10 @@ Method: <build and suite result; browser; how the state was seeded>
    server when the report is written.
 3. Seed the state the checks need. Prefer the UI. If the app persists state,
    use its own storage key and schema; set it and reload. Do not edit source.
-4. Run every `V` row from the plan. `smoke` (the `standard` depth) means every
-   row, the keyboard path and one screenshot per viewport; `audit` (the `full`
-   depth) adds contrast, forced-colors and performance. No row may be skipped.
+4. Run every `V` row from the plan, plus the keyboard path, and take one
+   screenshot per viewport. The test plan already matches the feature's ACs and
+   the touched adjacent behaviour, so there is no "smoke vs audit" split: every
+   row runs. No row may be skipped.
 5. Write the report, then run `artifact.cjs seal --step test`. Seal runs
    `check-test` and returns the violations if the body is incomplete; fix the
    body and seal again, then route with `router.cjs`. The router runs the same

@@ -124,6 +124,18 @@ for (const ac of visualAcs) {
   if (!checkAcs.has(ac)) violations.push(`${ac}: visual AC has no V check`);
 }
 
+// A plan may carry open questions for the user. Questions are not a defect; the
+// gate counts the blocking ones so the router can pause for the human.
+let questionsBlocking = 0;
+for (let i = 0; i < lines.length; i += 1) {
+  if (!/^##\s+Open questions/i.test(lines[i])) continue;
+  for (let j = i + 1; j < lines.length && !/^##\s+/.test(lines[j]); j += 1) {
+    const cells = lines[j].trim().split('|').map(c => c.trim());
+    const body = cells.slice(1, -1);
+    if (/^Q-\d+$/i.test(body[0]) && String(body[1]).toLowerCase() === 'yes') questionsBlocking += 1;
+  }
+}
+
 const files = new Set(steps.flatMap(s => s.files));
 const result = {
   ac: accept.size,
@@ -132,6 +144,7 @@ const result = {
   steps_with_acceptance: steps.filter(s => s.acceptance).length,
   visual_checks: checks.length,
   files_estimate: files.size,
+  questions_blocking: questionsBlocking,
   failed: violations.length,
   violations,
 };
