@@ -25,23 +25,24 @@ for (const line of lines) {
     continue;
   }
   const [, step, decision, reason, , time] = cells;
-  // A project-command reject is the router re-running the worker's acceptance
-  // command; the worker was not called again. The row documents a router run, not
-  // a model call. Every other row belongs to a model call: accepted, human, or a
-  // rejected artifact.
-  const model = !(decision === 'reject' && /^project command failed/i.test(String(reason)));
-  rows.push({ id: cells[0], step, decision, reason, time, model });
+  // Every routed artifact is one model call: the worker (or the orchestrator's
+  // own test step) that produced it. A reject is that call's verdict, not a
+  // second call — the router no longer re-runs the project command.
+  rows.push({ id: cells[0], step, decision, reason, time, model: true });
 }
 
 const is = (value) => (row) => row.decision === value;
-const accepted = rows.filter(row => !['reject', 'human', 'skipped'].includes(row.decision)).length;
+// "accepted" means the artifact made forward progress (or a scope question that
+// is a normal, expected outcome). reject/human/grant/skipped are the pauses.
+const accepted = rows.filter(row => !['reject', 'human', 'grant', 'skipped'].includes(row.decision)).length;
 const reject = rows.filter(is('reject')).length;
 const human = rows.filter(is('human')).length;
+const grant = rows.filter(is('grant')).length;
 const skipped = rows.filter(is('skipped')).length;
 
 const byStep = {};
 for (const row of rows) {
-  const bucket = byStep[row.step] ||= { rows: 0, model: 0, worker: 0, accepted: 0, reject: 0, human: 0, skipped: 0 };
+  const bucket = byStep[row.step] ||= { rows: 0, model: 0, worker: 0, accepted: 0, reject: 0, human: 0, grant: 0, skipped: 0 };
   bucket.rows += 1;
   if (row.model) {
     bucket.model += 1;
@@ -49,6 +50,7 @@ for (const row of rows) {
   }
   if (row.decision === 'reject') bucket.reject += 1;
   else if (row.decision === 'human') bucket.human += 1;
+  else if (row.decision === 'grant') bucket.grant += 1;
   else if (row.decision === 'skipped') bucket.skipped += 1;
   else bucket.accepted += 1;
 }
@@ -90,6 +92,7 @@ const summary = {
   accepted,
   reject,
   human,
+  grant,
   skipped,
   first: fmt(first),
   last: fmt(last),
@@ -103,12 +106,12 @@ if (!markdown) {
   process.exit(0);
 }
 
-const out = ['| step | rows | model | worker | accepted | reject | human |', '|---|---:|---:|---:|---:|---:|---:|'];
+const out = ['| step | rows | model | worker | accepted | reject | human | grant |', '|---|---:|---:|---:|---:|---:|---:|---:|'];
 for (const [step, bucket] of Object.entries(byStep)) {
-  out.push(`| ${step} | ${bucket.rows} | ${bucket.model} | ${bucket.worker} | ${bucket.accepted} | ${bucket.reject} | ${bucket.human} |`);
+  out.push(`| ${step} | ${bucket.rows} | ${bucket.model} | ${bucket.worker} | ${bucket.accepted} | ${bucket.reject} | ${bucket.human} | ${bucket.grant} |`);
 }
 out.push('');
-out.push(`Rows: ${summary.rows} (${summary.accepted} accepted, ${summary.reject} reject, ${summary.human} human${summary.skipped ? `, ${summary.skipped} skipped` : ''}); model calls: ${summary.model_calls} (worker ${summary.worker_calls}, test ${summary.test_calls}); router runs: ${summary.router_runs}; span ${summary.span_minutes} min.`);
+out.push(`Rows: ${summary.rows} (${summary.accepted} accepted, ${summary.reject} reject, ${summary.human} human, ${summary.grant} grant${summary.skipped ? `, ${summary.skipped} skipped` : ''}); model calls: ${summary.model_calls} (worker ${summary.worker_calls}, test ${summary.test_calls}); router runs: ${summary.router_runs}; span ${summary.span_minutes} min.`);
 if (rejectReasons.length) {
   out.push(`Rejects: ${rejectReasons.map(item => `${item.reason} x${item.count}`).join('; ')}.`);
 }

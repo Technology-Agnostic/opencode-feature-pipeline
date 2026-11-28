@@ -18,7 +18,7 @@ If the brief names a file, read that file; otherwise stop at the listing.
 
 ## Output
 
-`.opencode/plans/<slug>/analysis.md`, at most 55 body lines (frontmatter excluded; 75 in full).
+`.opencode/plans/<slug>/analysis.md`, at most 55 body lines (frontmatter excluded).
 
 Run `node "$HOME/.config/opencode/scripts/artifact.cjs" init` (the packet gives `out`), fill the body and the machine block, then run `artifact.cjs seal`. `seal` writes the YAML header and runs `check-analysis`; if the gate fails, it returns the violations, so fix the body and run it again. Never write YAML frontmatter.
 

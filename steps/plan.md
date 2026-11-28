@@ -17,7 +17,7 @@ ACs already exist: do not invent new ones.
 
 ## Output
 
-`.opencode/plans/<slug>/plan.md`, at most 80 body lines (100 in full).
+`.opencode/plans/<slug>/plan.md`, at most 80 body lines.
 
 Run `node "$HOME/.config/opencode/scripts/artifact.cjs" init` (the packet gives `out`), fill the body and the machine block, then run `artifact.cjs seal`. `seal` writes the YAML header and runs `check-plan`; if the gate fails, it returns the violations, so fix the body and run it again. Never write YAML frontmatter.
 
@@ -45,6 +45,11 @@ refs: S-01, AC-01.1
 
 ## Risks
 - <what can go wrong and where it will show>
+
+## Open questions
+| ID | Blocking | Question | Recommendation |
+|----|----------|----------|----------------|
+| Q-01 | no | <what needs a product decision before the plan is executable> | <what you recommend> |
 ```
 
 ## How to split
@@ -66,7 +71,8 @@ refs: S-01, AC-01.1
 - `ac_assigned` — ACs that appear in at least one step (must equal `ac`);
 - `steps` / `steps_with_acceptance`;
 - `visual_checks` — rows in `## Visual checks`;
-- `files_estimate` — distinct files across the steps.
+- `files_estimate` — distinct files across the steps;
+- `questions_blocking` — questions with `Blocking: yes` (the gate counts them).
 
 ## Hard rules
 
@@ -79,5 +85,5 @@ refs: S-01, AC-01.1
 - No new AC, no new dependency, no route or storage change unless the analysis
   says so.
 - A step's acceptance command must fail when its AC is violated.
-- If a step cannot be planned without a product decision, return
-  `status: needs_input` and name it.
+- A question that changes the plan is `Blocking: yes` in `## Open questions` with
+  a recommendation; never guess and bury the guess in a risk.

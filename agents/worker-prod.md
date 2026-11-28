@@ -53,7 +53,8 @@ and you do not call other agents.
    - the artifact at `out`.
 4. Create the report with
    `node "$HOME/.config/opencode/scripts/artifact.cjs" init --step implement --step-id <S-xx> --out <out>`,
-   then fill the body and the machine block.
+   then fill the body and the machine block. If the file already exists (a grant
+   re-run), edit its body and machine block instead; init is only for a new file.
 5. Run the build and the acceptance command. Put the real numbers in the machine
    block (`verify_cmd`, `verify_exit`, `verify_passed`, `verify_failed`). Never
    estimate them.
@@ -61,8 +62,13 @@ and you do not call other agents.
    `node "$HOME/.config/opencode/scripts/artifact.cjs" seal --step implement --out <out>`.
    Seal writes the header and derives `steps_done`, `steps_planned`,
    `files_touched` and `visual_checks`. Never write YAML frontmatter.
-7. If the step cannot be finished, set `status: blocked` in the machine block and
-   seal. A blocked step with evidence is a result; a done step without it is not.
+7. If the step cannot be finished, choose the honest status and seal:
+   - a file you need is outside `files_allowed` → `status: needs_input` with that
+     file in the machine block's `needs_files` (comma-separated paths), and
+     change nothing else;
+   - any other blocker → `status: blocked` with evidence.
+   A blocked or needs_input step with evidence is a result; a done step without
+   it is not.
 
 # What you must not do
 
@@ -87,6 +93,6 @@ changed: <n files>
 next: <what the step made possible>
 ```
 
-If the packet is incomplete — a missing file, an unknown step, a gate that
-cannot run — return `status: needs_input` with the missing field and change
-nothing.
+If the packet is incomplete — a missing file you must touch, an unknown step, a
+gate that cannot run — return `status: needs_input` with the missing files in
+`needs_files` and change nothing else.

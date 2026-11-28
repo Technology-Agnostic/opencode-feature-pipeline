@@ -47,13 +47,15 @@ const MACHINE = {
   architecture: ['status', 'refs', 'modules', 'interfaces', 'files_estimate', 'new_files'],
   plan: ['status', 'refs'],
   implement: ['status', 'refs', 'step', 'tests_added', 'deviations',
-    'verify_cmd', 'verify_exit', 'verify_passed', 'verify_failed'],
+    'verify_cmd', 'verify_exit', 'verify_passed', 'verify_failed', 'needs_files'],
   test: ['status', 'refs', 'build', 'unit', 'viewports',
     'verify_cmd', 'verify_exit', 'verify_passed', 'verify_failed'],
 };
 const GATE_METRICS = {
   analysis: ['ac', 'rules', 'rules_covered', 'questions_blocking'],
-  plan: ['ac', 'ac_assigned', 'steps', 'steps_with_acceptance', 'visual_checks', 'files_estimate'],
+  design: ['questions_blocking'],
+  architecture: ['questions_blocking'],
+  plan: ['ac', 'ac_assigned', 'steps', 'steps_with_acceptance', 'visual_checks', 'files_estimate', 'questions_blocking'],
   test: ['checks_total', 'checks_passed', 'findings_blocker', 'findings_major', 'findings_minor', 'ac_deviations'],
 };
 const BLOCK_METRICS = {
@@ -118,6 +120,7 @@ function machineBlock(step, stepId, verifyCmd = '') {
     verify_exit: 0,
     verify_passed: 0,
     verify_failed: 0,
+    needs_files: '',
   };
   const lines = MACHINE[step].map(key => `${key}: ${values[key]}`);
   return `<!-- machine\n${lines.join('\n')}\n-->`;
@@ -167,8 +170,7 @@ function init(step, out, feature, stepId) {
     ok: true,
     file: rel(target),
     step,
-    budget: budgetFor(step, 'standard'),
-    budget_full: budgetFor(step, 'full'),
+    budget: budgetFor(step),
     ...(hint ? { hint } : {}),
   }, null, 2));
 }
@@ -364,7 +366,7 @@ function seal(step, out, worker, feature) {
     status,
     refs: fields.refs || [],
   };
-  if (step === 'test' || step === 'implement') {
+  if ((step === 'test' || step === 'implement') && status === 'done') {
     if (!fields.verify_cmd) fail('machine field verify_cmd is required');
     header.verify = {
       cmd: fields.verify_cmd,
@@ -373,6 +375,12 @@ function seal(step, out, worker, feature) {
       failed: Number(fields.verify_failed ?? 0),
     };
   }
+  // A blocked or needs_input implement step names what it still needs. For a
+  // missing file this is the grant list the orchestrator reads to widen
+  // `files_allowed`; seal exposes it so the orchestrator never reads the body.
+  if (step === 'implement' && status === 'needs_input') {
+    header.needs_files = fields.needs_files || [];
+  }
   header.changed = changed;
   header.metrics = metrics;
 
@@ -380,8 +388,7 @@ function seal(step, out, worker, feature) {
   const sealed = yaml(header) + body;
   fs.writeFileSync(out, sealed, 'utf8');
   const lines = bodyLines(sealed);
-  const budget = budgetFor(step, 'standard');
-  const budgetFull = budgetFor(step, 'full');
+  const budget = budgetFor(step);
   console.log(JSON.stringify({
     ok: true,
     file: rel(out),
@@ -392,9 +399,7 @@ function seal(step, out, worker, feature) {
     changed,
     body_lines: lines,
     budget,
-    budget_full: budgetFull,
     over_budget: budget ? lines > budget : false,
-    over_budget_full: budgetFull ? lines > budgetFull : false,
   }, null, 2));
 }
 

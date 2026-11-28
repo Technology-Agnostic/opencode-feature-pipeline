@@ -14,13 +14,15 @@ command; the plan is the contract.
 - this contract.
 
 Do not read other steps' reports, other artifacts, the whole repository or git
-history. If a needed file is outside `files_allowed`, stop with
-`status: needs_input`.
+history. If a file you must write or read is outside `files_allowed`, finish
+with `status: needs_input` and list that file in the machine block's
+`needs_files` (comma-separated paths). The orchestrator grants it and re-runs
+the step; you do not widen `files_allowed` yourself.
 
 ## Output
 
 1. The code and tests for the step.
-2. `.opencode/plans/<slug>/steps/<S-xx>.md`, at most 20 body lines (25 in full).
+2. `.opencode/plans/<slug>/steps/<S-xx>.md`, at most 20 body lines.
 
 Create it with `node "$HOME/.config/opencode/scripts/artifact.cjs" init --step implement --step-id <S-xx>`, fill the body and the machine block, then run `artifact.cjs seal --step implement`. `seal` writes the YAML header, reads the plan for `steps_done`, `steps_planned` and `visual_checks`, and compares the plan's files with the baseline hashes that `init` recorded before you started. If no baseline exists, it falls back to `git status --untracked-files=all`. Never write YAML frontmatter.
 
@@ -35,6 +37,7 @@ verify_cmd: <the step's acceptance command>
 verify_exit: 0
 verify_passed: 0
 verify_failed: 0
+needs_files:
 -->
 
 # Step report: S-01 <title>

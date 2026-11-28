@@ -2,7 +2,7 @@
 // block in the body; seal turns it plus the gate output into YAML frontmatter.
 const fs = require('node:fs');
 
-const LIST_KEYS = new Set(['refs', 'risk_flags', 'viewports', 'files', 'sections']);
+const LIST_KEYS = new Set(['refs', 'risk_flags', 'viewports', 'files', 'sections', 'needs_files']);
 
 function read(file) {
   return fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '');

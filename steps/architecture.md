@@ -2,8 +2,9 @@
 
 Place the change in the existing repository: which modules and files change, who
 owns what, which interfaces move, and in what order the repo compiles at every
-step. This step runs only for a large change (`files_estimate > 10`), a risk flag
-(`auth`, `money`, `migration`, `public`) or `full` mode. You write no code.
+step. This step runs only when the user asks for it — the analysis recommends it
+for a large change (`files_estimate > 10`) or a risk flag
+(`auth`, `money`, `migration`, `public`). You write no code.
 
 ## Inputs you may read
 
@@ -17,7 +18,7 @@ Do not read the plan (it does not exist yet) or other artifacts.
 
 ## Output
 
-`.opencode/plans/<slug>/architecture.md`, at most 45 body lines (60 in full).
+`.opencode/plans/<slug>/architecture.md`, at most 45 body lines.
 
 Run `node "$HOME/.config/opencode/scripts/artifact.cjs" init` (the packet gives `out`), fill the body and the machine block, then run `artifact.cjs seal`. `seal` writes the YAML header and runs `check-sections`; if the gate fails, it returns the violations, so fix the body and run it again. Never write YAML frontmatter.
 
@@ -50,6 +51,11 @@ new_files: 0
 
 ## Rejected alternatives
 - <one line each: what and why not>
+
+## Open questions
+| ID | Blocking | Question | Recommendation |
+|----|----------|----------|----------------|
+| Q-01 | no | <what needs a product or constraint decision> | <what you recommend> |
 ```
 
 ## Metrics
@@ -57,7 +63,8 @@ new_files: 0
 - `modules` — rows in `## Modules`;
 - `interfaces` — public contracts added or changed;
 - `files_estimate` — distinct files the change touches;
-- `new_files` — files the analysis did not name.
+- `new_files` — files the analysis did not name;
+- `questions_blocking` — questions with `Blocking: yes` (the gate counts them).
 
 ## Hard rules
 
@@ -68,5 +75,5 @@ new_files: 0
   new dependency, route, barrel or storage bump.
 - Every step of `## Migration order` leaves the repo compiling and the suite
   green; a step that breaks the build is not a step.
-- If a decision changes the analysis ACs, return `status: needs_input`; do not
-  rewrite the ACs here.
+- A decision that changes the analysis ACs is `Blocking: yes` in
+  `## Open questions` with a recommendation; do not rewrite the ACs here.
