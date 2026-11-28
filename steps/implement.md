@@ -6,12 +6,16 @@ command; the plan is the contract.
 
 ## Inputs you may read
 
-- `.opencode/plans/<slug>/plan.md` — the step in your packet;
-- `.opencode/plans/<slug>/architecture.md` if it exists — the decisions that
-  constrain you;
+- `.opencode/plans/<slug>/plan.md` — the step, its `## Context` and its compiled
+  `design:` / `architecture:` constraint; this is the only requirement artifact;
 - `.opencode/steps/rules.md`;
 - the files in `files_allowed` (read-write);
 - this contract.
+
+The plan already carries the design and architecture decisions. Do not read
+`analysis.md`, `design.md` or `architecture.md`: they are inputs to `plan`, not
+to you. If the plan does not state a constraint you need, do not guess — seal
+`status: blocked` with the missing constraint in the evidence.
 
 Do not read other steps' reports, other artifacts, the whole repository or git
 history. If a file you must write or read is outside `files_allowed`, finish
@@ -24,7 +28,7 @@ the step; you do not widen `files_allowed` yourself.
 1. The code and tests for the step.
 2. `.opencode/plans/<slug>/steps/<S-xx>.md`, at most 20 body lines.
 
-Create it with `node "$HOME/.config/opencode/scripts/artifact.cjs" init --step implement --step-id <S-xx>`, fill the body and the machine block, then run `artifact.cjs seal --step implement`. `seal` writes the YAML header, reads the plan for `steps_done`, `steps_planned` and `visual_checks`, and compares the plan's files with the baseline hashes that `init` recorded before you started. If no baseline exists, it falls back to `git status --untracked-files=all`. Never write YAML frontmatter.
+Create it with `node "$HOME/.config/opencode/scripts/artifact.cjs" init --step implement --step-id <S-xx>` as your **first command, before you edit code**: the baseline hash is only useful if it is taken before the step. Fill the body and the machine block, then run `artifact.cjs seal --step implement`. `seal` writes the YAML header, reads the plan for `steps_done`, `steps_planned` and `visual_checks`, and compares the plan's files with the baseline hashes that `init` recorded before you started. If no baseline exists, it falls back to `git status --untracked-files=all`. Never write YAML frontmatter.
 
 ```markdown
 <!-- machine
@@ -73,6 +77,10 @@ needs_files:
 - One plan step per call. Do not start the next step, even if it looks small.
 - KISS and YAGNI: the smallest code that satisfies the step's ACs. No
   speculative abstraction, no new dependency, no dead code.
+- When the step touches a template or a stylesheet, the step's `design:` line and
+  `## Context` are the contract for states, copy keys, tokens, focus and
+  responsive widths. Implement them as written; a different pattern is a
+  deviation, not a free choice.
 - Decompose so the next change is local: one owner per rule, small functions,
   no duplicated normalization.
 - Tests live next to the code they test. A step that owns wiring adds its

@@ -22,7 +22,9 @@ const ARTIFACT = {
   design: 'design',
   architecture: 'architecture',
   plan: 'plan',
+  'test-plan': 'test-plan',
   implement: 'step-report',
+  fix: 'fix-report',
   test: 'test-report',
 };
 const DEFAULT_WORKER = {
@@ -30,7 +32,9 @@ const DEFAULT_WORKER = {
   design: 'worker-read',
   architecture: 'worker-read',
   plan: 'worker-read',
+  'test-plan': 'worker-read',
   implement: 'worker-prod',
+  fix: 'worker-prod',
   test: 'orchestrator',
 };
 const TITLES = {
@@ -38,7 +42,9 @@ const TITLES = {
   design: 'Design',
   architecture: 'Architecture',
   plan: 'Plan',
+  'test-plan': 'Test plan',
   implement: 'Step report',
+  fix: 'Fix report',
   test: 'Test report',
 };
 const MACHINE = {
@@ -46,7 +52,10 @@ const MACHINE = {
   design: ['status', 'refs', 'screens', 'states', 'a11y_checks', 'files_estimate', 'risk_flags'],
   architecture: ['status', 'refs', 'modules', 'interfaces', 'files_estimate', 'new_files'],
   plan: ['status', 'refs'],
+  'test-plan': ['status', 'refs'],
   implement: ['status', 'refs', 'step', 'tests_added', 'deviations',
+    'verify_cmd', 'verify_exit', 'verify_passed', 'verify_failed', 'needs_files'],
+  fix: ['status', 'refs', 'fixed', 'remaining', 'tests_added', 'deviations',
     'verify_cmd', 'verify_exit', 'verify_passed', 'verify_failed', 'needs_files'],
   test: ['status', 'refs', 'build', 'unit', 'viewports',
     'verify_cmd', 'verify_exit', 'verify_passed', 'verify_failed'],
@@ -55,7 +64,9 @@ const GATE_METRICS = {
   analysis: ['ac', 'rules', 'rules_covered', 'questions_blocking'],
   design: ['questions_blocking'],
   architecture: ['questions_blocking'],
-  plan: ['ac', 'ac_assigned', 'steps', 'steps_with_acceptance', 'visual_checks', 'files_estimate', 'questions_blocking'],
+  plan: ['ac', 'ac_assigned', 'steps', 'steps_with_acceptance', 'visual_checks', 'files_estimate', 'questions_blocking', 'design_refs', 'architecture_refs'],
+  'test-plan': ['rows'],
+  fix: ['fixed', 'remaining', 'retest'],
   test: ['checks_total', 'checks_passed', 'findings_blocker', 'findings_major', 'findings_minor', 'ac_deviations'],
 };
 const BLOCK_METRICS = {
@@ -64,6 +75,7 @@ const BLOCK_METRICS = {
   architecture: ['modules', 'interfaces', 'files_estimate', 'new_files'],
   plan: [],
   implement: ['tests_added', 'deviations'],
+  fix: ['tests_added', 'deviations'],
   test: ['build', 'unit', 'viewports'],
 };
 
@@ -111,6 +123,8 @@ function machineBlock(step, stepId, verifyCmd = '') {
     interfaces: 0,
     new_files: 0,
     step: stepId || 'S-01',
+    fixed: 0,
+    remaining: 0,
     tests_added: 0,
     deviations: 0,
     build: 'pass',
@@ -159,13 +173,20 @@ function init(step, out, feature, stepId) {
       planFiles = unionFiles(plan.steps);
     }
   }
+  if (step === 'fix') {
+    planFile = path.join(path.dirname(target), 'plan.md');
+    if (fs.existsSync(planFile)) planFiles = unionFiles(parsePlan(planFile).steps);
+  }
   const title = step === 'implement' ? `# Step report: ${stepId || 'S-01'}` : `# ${TITLES[step]}: ${feature || featureFrom(target) || ''}`;
   fs.writeFileSync(target, `${machineBlock(step, stepId, verifyCmd)}\n\n${title}\n`, 'utf8');
   // Capture the pre-step state now; seal compares against it after the worker.
   if (step === 'implement' && stepId && planFile && fs.existsSync(planFile)) {
     writeBaseline(target, stepId, planFiles);
   }
-  const hint = verifyCmd ? undefined : (step === 'test' ? 'fill verify_cmd with the project test command' : (step === 'implement' ? 'fill verify_cmd with the acceptance command' : undefined));
+  if (step === 'fix' && planFile && fs.existsSync(planFile)) {
+    writeBaseline(target, 'fix', planFiles);
+  }
+  const hint = verifyCmd ? undefined : (step === 'test' ? 'fill verify_cmd with the project test command' : (step === 'implement' ? 'fill verify_cmd with the acceptance command' : (step === 'fix' ? "fill verify_cmd with the test report's verify.cmd" : undefined)));
   console.log(JSON.stringify({
     ok: true,
     file: rel(target),
@@ -180,11 +201,7 @@ function parsePlan(planFile) {
   const text = read(planFile);
   const steps = [];
   let current = null;
-  let inVisual = false;
-  let visual = 0;
   for (const line of text.split(/\r?\n/)) {
-    if (/^##\s+Visual checks/i.test(line)) { inVisual = true; continue; }
-    if (/^##\s+/.test(line)) inVisual = false;
     const heading = line.match(/^###\s+(S-\d+)\b/);
     if (heading) {
       current = { id: heading[1], files: [] };
@@ -197,9 +214,23 @@ function parsePlan(planFile) {
     if (current && /^-\s+acceptance:/i.test(line)) {
       current.acceptance = line.replace(/^-\s+acceptance:\s*/i, '').replace(/`/g, '').trim();
     }
-    if (inVisual && /^\|\s*V-\d+\s*\|/.test(line)) visual += 1;
   }
-  return { steps, visual };
+  return { steps };
+}
+
+// The visual checks live in the separate test plan. Implement uses the count to
+// decide whether the run needs the test step; the count belongs to the plan's
+// compiled output, not to its step list.
+function visualChecks(planFile) {
+  const testPlan = path.join(path.dirname(planFile), 'test-plan.md');
+  if (!fs.existsSync(testPlan)) return 0;
+  let inChecks = false;
+  let count = 0;
+  for (const line of read(testPlan).split(/\r?\n/)) {
+    if (/^##\s+/.test(line)) { inChecks = /^##\s+Checks/i.test(line); continue; }
+    if (inChecks && /^\|\s*V-\d+\s*\|/.test(line)) count += 1;
+  }
+  return count;
 }
 
 function unionFiles(steps) {
@@ -299,7 +330,7 @@ function seal(step, out, worker, feature) {
       fail(`machine step ${fields.step} does not match ${fileStep}.md`);
     }
   }
-  if (['implement', 'test'].includes(step) && status === 'done') {
+  if (['implement', 'fix', 'test'].includes(step) && status === 'done') {
     if (!fields.verify_cmd) fail('machine field verify_cmd is required');
     if (Number(fields.verify_exit ?? 0) !== 0) fail('machine field verify_exit must be 0 for status done');
     if (Number(fields.verify_failed ?? 0) !== 0) fail('machine field verify_failed must be 0 for status done');
@@ -336,7 +367,7 @@ function seal(step, out, worker, feature) {
     metrics.step = stepId;
     metrics.steps_done = index + 1;
     metrics.steps_planned = plan.steps.length;
-    metrics.visual_checks = plan.visual;
+    metrics.visual_checks = visualChecks(planFile);
     const fromBaseline = changedSinceBaseline(out, stepId);
     if (fromBaseline) {
       changed = fromBaseline;
@@ -347,6 +378,18 @@ function seal(step, out, worker, feature) {
       // is no way to tell which plan file this call changed.
       changed = gitChanged(item.files);
     }
+    metrics.files_touched = changed.length;
+  }
+
+  if (step === 'fix') {
+    const planFile = path.join(path.dirname(out), 'plan.md');
+    if (!fs.existsSync(planFile)) fail(`${rel(planFile)} not found; fix needs the plan next to it`);
+    const planFiles = unionFiles(parsePlan(planFile).steps);
+    const fromBaseline = changedSinceBaseline(out, 'fix');
+    // A fix edits code the plan already names. Without a pre-fix baseline the
+    // fallback can only say which plan files are dirty now, including an earlier
+    // implement step; the report says so instead of claiming a tighter scope.
+    changed = fromBaseline ?? gitChanged(planFiles);
     metrics.files_touched = changed.length;
   }
 
@@ -366,7 +409,7 @@ function seal(step, out, worker, feature) {
     status,
     refs: fields.refs || [],
   };
-  if ((step === 'test' || step === 'implement') && status === 'done') {
+  if ((step === 'test' || step === 'implement' || step === 'fix') && status === 'done') {
     if (!fields.verify_cmd) fail('machine field verify_cmd is required');
     header.verify = {
       cmd: fields.verify_cmd,
@@ -378,7 +421,7 @@ function seal(step, out, worker, feature) {
   // A blocked or needs_input implement step names what it still needs. For a
   // missing file this is the grant list the orchestrator reads to widen
   // `files_allowed`; seal exposes it so the orchestrator never reads the body.
-  if (step === 'implement' && status === 'needs_input') {
+  if ((step === 'implement' || step === 'fix') && status === 'needs_input') {
     header.needs_files = fields.needs_files || [];
   }
   header.changed = changed;

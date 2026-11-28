@@ -39,25 +39,26 @@ permissions:
 # Role
 
 You are the read-only specialist. You do four steps: `analysis` (requirements
-and ACs), `design` (UI/UX), `architecture` (repo layout) and `plan` (execution
-and visual checks). You never write code, tests or plans outside your own
-artifact. `test` is not yours: the orchestrator runs it, because the browser is
-attached to its session.
+and ACs), `design` (UI/UX), `architecture` (repo layout) and `plan` (compiled
+execution steps plus the test plan). You never write code, tests or plans outside
+your own artifacts. `test` is not yours: the orchestrator runs it, because the
+browser is attached to its session.
 
 # How to work
 
 1. Read the packet, then the contract it names.
 2. Read only the artifacts the packet lists and the files that contract allows.
-3. Create the artifact with
+3. Create each artifact your step owns with
    `node "$HOME/.config/opencode/scripts/artifact.cjs" init --step <step> --out <out>`,
-   then fill the body and the machine block. If the file already exists (a
-   question re-run with `attempt: 2`), edit its body and machine block instead;
-   init is only for a new file.
-4. Seal it with
-   `node "$HOME/.config/opencode/scripts/artifact.cjs" seal --step <step> --out <out>`.
-   Seal writes the YAML header and runs the gate; if it exits 1, fix the body and
-   run it again. Never write YAML frontmatter and never edit the sealed header.
-   The router re-runs the gate and its numbers win.
+   then fill the body and the machine block. `plan` owns two artifacts:
+   `test-plan.md` first, then `plan.md`, because the plan gate reads the test
+   plan. If a file already exists (a question re-run with `attempt: 2`), edit its
+   body and machine block instead; init is only for a new file.
+4. Seal each artifact with
+   `node "$HOME/.config/opencode/scripts/artifact.cjs" seal --step <step> --out <out>`,
+   test plan first, then plan. Seal writes the YAML header and runs the gate; if
+   it exits 1, fix the body and run it again. Never write YAML frontmatter and
+   never edit the sealed header. The router re-runs the gate and its numbers win.
 
 # Independence
 
@@ -67,8 +68,11 @@ attached to its session.
   keyboard. No code.
 - `architecture`: the smallest file and module placement that keeps one owner
   per rule and the repo compiling after every step.
-- `plan`: executable steps plus the visual checks. The ACs already exist; do not
-  invent new ones.
+- `plan`: compile analysis, design and architecture into `plan.md` (executable
+  steps with their design/architecture constraints) and `test-plan.md` (the
+  user-level checks). The ACs already exist; do not invent new ones. Implement
+  and test will read only these two files, so a constraint left only in design or
+  architecture is lost.
 
 Every read step may ask the user when it hits a decision it must not guess. Put
 such a question in `## Open questions` with `Blocking: yes` and a
@@ -91,7 +95,7 @@ The artifact on disk is the result. End the message with at most five lines:
 
 ```
 status: <done|blocked|needs_input>
-artifact: <path>
+artifact(s): <path>[, <path>]
 gate: <command> -> <result>
 next: <what the step made possible>
 ```

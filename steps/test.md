@@ -1,22 +1,21 @@
 # Step contract: test
 
-Run the visual test plan from `plan.md` against the real app, and prove the
-project is still green. This is the only browser step, and the orchestrator runs
+Run `test-plan.md` against the real app, and prove the project is still green. This is the only browser step, and the orchestrator runs
 it: the browser is attached to the orchestrator's session, not to a worker. Do
 not delegate this step. You do not fix code: you report what you saw.
 
 ## Inputs you may read
 
-- `.opencode/plans/<slug>/plan.md` — the `## Visual checks` table;
-- `.opencode/plans/<slug>/analysis.md` — the ACs the checks prove;
-- `.opencode/plans/<slug>/design.md` — when it exists, the states and copy the controls must match;
+- `.opencode/plans/<slug>/test-plan.md` — the `## Checks` and `## Copy checks` tables;
+- `.opencode/plans/<slug>/fix-report.md` — on a re-test after `fix`, the rows to run;
 - `.opencode/steps/rules.md`;
 - the running app through the browser tool;
 - this contract.
 
-Do not read code to decide how a check should behave. The check list is
-user-level; if a check cannot be run from the page, it is `blocked`, not a
-reason to read source.
+The test plan is the only requirement artifact: do not read `plan.md`,
+`analysis.md`, `design.md` or `architecture.md`. Do not read code to decide how a
+check should behave. The check list is user-level; if a check cannot be run from
+the page, it is `blocked`, not a reason to read source.
 
 ## Output
 
@@ -68,10 +67,15 @@ Method: <build and suite result; browser; how the state was seeded>
    server when the report is written.
 3. Seed the state the checks need. Prefer the UI. If the app persists state,
    use its own storage key and schema; set it and reload. Do not edit source.
-4. Run every `V` row from the plan, plus the keyboard path, and take one
+4. Run every `V` row from the test plan, plus the keyboard path, and take one
    screenshot per viewport. The test plan already matches the feature's ACs and
    the touched adjacent behaviour, so there is no "smoke vs audit" split: every
-   row runs. No row may be skipped.
+   row runs. No row may be skipped. Use the `Seed` cell to reach the state and
+   the `Copy checks` section for the i18n keys that must render.
+   On a re-test after `fix`, start from the previous report, run only the `V`
+   rows named in `fix-report.md`'s `Retest` column, keep the other rows and
+   findings, and drop a finding whose retest passes. The amended report still
+   lists every `V` row.
 5. Write the report, then run `artifact.cjs seal --step test`. Seal runs
    `check-test` and returns the violations if the body is incomplete; fix the
    body and seal again, then route with `router.cjs`. The router runs the same
@@ -115,9 +119,9 @@ still closes the run, with `Verification: partial`.
 - Take one screenshot per viewport and keep its path. If the capture path is
   denied, record that and say which rows rest on DOM measurement instead of
   pixels.
-- If the design names copy keys, check that at least one control renders them.
-  A key that exists in the locale files but is used by no template is a `minor`
-  finding: the design was not implemented as written.
+- For every key in the test plan's `## Copy checks`, check that at least one
+  control renders it. A key that exists in the locale files but is used by no
+  template is a `minor` finding: the design was not implemented as written.
 - A check you did not run is `blocked`, never `pass`.
 - `minor` is not a blocker. A failed check caused by a wrong AC is an
   `ac_deviation`, not a code defect.

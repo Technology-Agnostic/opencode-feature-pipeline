@@ -15,12 +15,22 @@ const lines = fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '').split(/\r?\n/
 
 const rows = [];
 for (const line of lines) {
-  if (!/^\|\s*(H|SK)-\d+\s*\|/.test(line)) continue;
+  if (!/^\|\s*(H|SK|E)-\d+\s*\|/.test(line)) continue;
   const cells = line.split('|').slice(1, -1).map(cell => cell.trim());
   if (cells[0].startsWith('SK-')) {
     rows.push({
       id: cells[0], step: cells[1], decision: 'skipped', reason: cells[3] || '',
       time: cells[5] || cells[4] || '', model: false,
+    });
+    continue;
+  }
+  if (cells[0].startsWith('E-')) {
+    // An event is a model call that did not produce a new artifact: a
+    // continuation after a step-limit stop is the common one. Counting it keeps
+    // the ledger's call total honest instead of forcing a hand count.
+    rows.push({
+      id: cells[0], step: cells[1], decision: cells[2] || 'event', reason: cells[3] || '',
+      time: cells[5] || '', model: true, event: true,
     });
     continue;
   }
@@ -39,6 +49,7 @@ const reject = rows.filter(is('reject')).length;
 const human = rows.filter(is('human')).length;
 const grant = rows.filter(is('grant')).length;
 const skipped = rows.filter(is('skipped')).length;
+const continuations = rows.filter(row => row.event).length;
 
 const byStep = {};
 for (const row of rows) {
@@ -81,19 +92,22 @@ const fmt = (ms) => (ms === null ? null : new Date(ms).toLocaleString('sv-SE').s
 
 const summary = {
   rows: rows.length,
-  // A ledger row is one router run. `calls` keeps its budget meaning: worker
+  // A routed artifact is one router run; an E- row is a call that produced no
+  // new artifact (a continuation). `calls` keeps its budget meaning: worker
   // model calls only (test is the orchestrator's own work). `model_calls` adds
-  // that test call back, so the two numbers cannot be confused again.
+  // that test call back, and continuations are included because they cost a
+  // model call even when they reuse a session.
   model_calls: modelCalls,
   worker_calls: workerCalls,
   test_calls: testCalls,
-  router_runs: rows.length,
+  router_runs: rows.filter(row => !row.event).length,
   calls: workerCalls,
   accepted,
   reject,
   human,
   grant,
   skipped,
+  continuations,
   first: fmt(first),
   last: fmt(last),
   span_minutes: spanMinutes,
@@ -111,7 +125,7 @@ for (const [step, bucket] of Object.entries(byStep)) {
   out.push(`| ${step} | ${bucket.rows} | ${bucket.model} | ${bucket.worker} | ${bucket.accepted} | ${bucket.reject} | ${bucket.human} | ${bucket.grant} |`);
 }
 out.push('');
-out.push(`Rows: ${summary.rows} (${summary.accepted} accepted, ${summary.reject} reject, ${summary.human} human, ${summary.grant} grant${summary.skipped ? `, ${summary.skipped} skipped` : ''}); model calls: ${summary.model_calls} (worker ${summary.worker_calls}, test ${summary.test_calls}); router runs: ${summary.router_runs}; span ${summary.span_minutes} min.`);
+out.push(`Rows: ${summary.rows} (${summary.accepted} accepted, ${summary.reject} reject, ${summary.human} human, ${summary.grant} grant${summary.skipped ? `, ${summary.skipped} skipped` : ''}); model calls: ${summary.model_calls} (worker ${summary.worker_calls}, test ${summary.test_calls}); continuations: ${summary.continuations}; router runs: ${summary.router_runs}; span ${summary.span_minutes} min.`);
 if (rejectReasons.length) {
   out.push(`Rejects: ${rejectReasons.map(item => `${item.reason} x${item.count}`).join('; ')}.`);
 }

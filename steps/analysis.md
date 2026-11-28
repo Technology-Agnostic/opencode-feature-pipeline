@@ -2,7 +2,8 @@
 
 Turn the brief into testable requirements. This is the only step that defines
 acceptance criteria; every later step refers to its AC ids and never invents new
-ones. You write no code and no plan.
+ones. You write no code and no plan. The plan compiles this artifact into
+`plan.md` and `test-plan.md`; implement and test do not read the analysis.
 
 ## Inputs you may read
 
@@ -18,7 +19,7 @@ If the brief names a file, read that file; otherwise stop at the listing.
 
 ## Output
 
-`.opencode/plans/<slug>/analysis.md`, at most 55 body lines (frontmatter excluded).
+`.opencode/plans/<slug>/analysis.md`, at most 66 body lines (frontmatter excluded).
 
 Run `node "$HOME/.config/opencode/scripts/artifact.cjs" init` (the packet gives `out`), fill the body and the machine block, then run `artifact.cjs seal`. `seal` writes the YAML header and runs `check-analysis`; if the gate fails, it returns the violations, so fix the body and run it again. Never write YAML frontmatter.
 

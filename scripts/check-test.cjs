@@ -2,27 +2,27 @@
 // Gate for the `test` step. It proves every visual check from the plan was run
 // and that findings are classified. It never judges the UI itself.
 //
-// usage: node check-test.cjs <test-report.md> --plan <plan.md> --analysis <analysis.md>
+// usage: node check-test.cjs <test-report.md> --test-plan <test-plan.md> --analysis <analysis.md>
 const fs = require('node:fs');
 const path = require('node:path');
 
 const argv = process.argv.slice(2);
 const file = argv[0];
-const planIdx = argv.indexOf('--plan');
+const planIdx = argv.indexOf('--test-plan');
 const planFile = planIdx > -1 ? argv[planIdx + 1] : null;
 const analysisIdx = argv.indexOf('--analysis');
 const analysisFile = analysisIdx > -1 ? argv[analysisIdx + 1] : null;
 if (!file || !planFile || !fs.existsSync(planFile)) {
-  console.error(JSON.stringify({ failed: 1, violations: ['usage: check-test.cjs <report.md> --plan <plan.md> --analysis <analysis.md>'] }));
+  console.error(JSON.stringify({ failed: 1, violations: ['usage: check-test.cjs <report.md> --test-plan <test-plan.md> --analysis <analysis.md>'] }));
   process.exit(2);
 }
 
-// --- the checks the plan asked for ---------------------------------------
+// --- the checks the test plan asked for ----------------------------------
 const plan = fs.readFileSync(path.resolve(planFile), 'utf8').split(/\r?\n/);
 const wanted = new Map();
 let inChecks = false;
 for (const line of plan) {
-  if (/^##\s+/.test(line)) { inChecks = /^##\s+Visual checks/i.test(line); continue; }
+  if (/^##\s+/.test(line)) { inChecks = /^##\s+Checks/i.test(line); continue; }
   if (inChecks && /^\|\s*V-\d+\s*\|/.test(line)) {
     const [, id, ac] = line.split('|').map(c => c.trim());
     wanted.set(id, ac);

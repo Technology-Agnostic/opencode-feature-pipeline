@@ -4,7 +4,9 @@ Place the change in the existing repository: which modules and files change, who
 owns what, which interfaces move, and in what order the repo compiles at every
 step. This step runs only when the user asks for it — the analysis recommends it
 for a large change (`files_estimate > 10`) or a risk flag
-(`auth`, `money`, `migration`, `public`). You write no code.
+(`auth`, `money`, `migration`, `public`). You write no code. The plan compiles
+these decisions into `plan.md`; implement does not read this artifact, so every
+constraint that matters must be explicit enough for the plan to copy.
 
 ## Inputs you may read
 
@@ -18,7 +20,7 @@ Do not read the plan (it does not exist yet) or other artifacts.
 
 ## Output
 
-`.opencode/plans/<slug>/architecture.md`, at most 45 body lines.
+`.opencode/plans/<slug>/architecture.md`, at most 55 body lines.
 
 Run `node "$HOME/.config/opencode/scripts/artifact.cjs" init` (the packet gives `out`), fill the body and the machine block, then run `artifact.cjs seal`. `seal` writes the YAML header and runs `check-sections`; if the gate fails, it returns the violations, so fix the body and run it again. Never write YAML frontmatter.
 

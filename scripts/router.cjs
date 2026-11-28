@@ -56,8 +56,9 @@ const METRICS = {
   analysis: ['ac', 'questions_blocking', 'risk_flags', 'rules', 'rules_covered', 'files_estimate', 'assumptions'],
   design: ['screens', 'states', 'a11y_checks', 'files_estimate', 'risk_flags', 'questions_blocking'],
   architecture: ['modules', 'interfaces', 'files_estimate', 'new_files', 'questions_blocking'],
-  plan: ['ac', 'ac_assigned', 'steps', 'steps_with_acceptance', 'visual_checks', 'files_estimate', 'questions_blocking'],
+  plan: ['ac', 'ac_assigned', 'steps', 'steps_with_acceptance', 'visual_checks', 'files_estimate', 'questions_blocking', 'design_refs', 'architecture_refs'],
   implement: ['step', 'steps_done', 'steps_planned', 'files_touched', 'tests_added', 'deviations', 'visual_checks'],
+  fix: ['fixed', 'remaining', 'retest', 'files_touched', 'tests_added', 'deviations'],
   test: ['build', 'unit', 'checks_passed', 'checks_total', 'findings_blocker', 'findings_major', 'findings_minor', 'ac_deviations', 'viewports'],
 };
 // Budgets are body lines, blank lines excluded and frontmatter not counted.
@@ -81,7 +82,7 @@ if (header.status === 'done') {
   // verified by the router's gate; implement reports its acceptance command; test
   // reports the suite. The worker's reported numbers are trusted: the router does
   // not re-run the project command, only the structural gate.
-  if (['test', 'implement'].includes(step)) {
+  if (['test', 'implement', 'fix'].includes(step)) {
     if (!header.verify || typeof header.verify !== 'object') v.push('done without verify object');
     else {
       if (!header.verify.cmd) v.push('verify.cmd is required');
@@ -140,12 +141,14 @@ if (has('--verify') && header.status === 'done') {
   const derived = step === 'analysis'
     ? ['ac', 'rules', 'rules_covered', 'questions_blocking']
     : step === 'plan'
-      ? ['ac', 'ac_assigned', 'steps', 'steps_with_acceptance', 'visual_checks', 'files_estimate', 'questions_blocking']
+      ? ['ac', 'ac_assigned', 'steps', 'steps_with_acceptance', 'visual_checks', 'files_estimate', 'questions_blocking', 'design_refs', 'architecture_refs']
       : step === 'test'
         ? ['checks_total', 'checks_passed', 'findings_blocker', 'findings_major', 'findings_minor', 'ac_deviations']
-        : (step === 'design' || step === 'architecture')
-          ? ['questions_blocking']
-          : [];
+        : step === 'fix'
+          ? ['fixed', 'remaining', 'retest']
+          : (step === 'design' || step === 'architecture')
+            ? ['questions_blocking']
+            : [];
   // The gate is the source of truth for every number it computes. A mismatch
   // is corrected and recorded instead of becoming a repair call: the model is
   // bad at copying numbers, the gate is not.
@@ -242,14 +245,43 @@ if (header.status && header.status !== 'done') {
     decision = 'close';
     reason = 'all steps done; no visual checks';
   }
+} else if (step === 'fix') {
+  const fixed = Number(metrics.fixed ?? 0);
+  const retest = Number(metrics.retest ?? 0);
+  const remaining = Number(metrics.remaining ?? 0);
+  if (fixed > 0 && retest > 0) {
+    decision = 'test';
+    reason = `${fixed} finding(s) fixed; re-run the named visual check(s)`;
+  } else {
+    decision = 'close';
+    reason = `${fixed} finding(s) fixed; ${remaining} blocker/major left; close`;
+  }
 } else if (step === 'test') {
   const failed = ['build', 'unit'].filter(k => String(metrics[k]) === 'fail');
   if (failed.length) {
     decision = 'close';
     reason = `blocked: ${failed.join(', ')} failed`;
   } else {
-    decision = 'close';
-    reason = `${metrics.checks_passed}/${metrics.checks_total} checks passed; ${metrics.findings_major} major, ${metrics.findings_minor} minor, ${metrics.ac_deviations} AC deviation(s)`;
+    const openFindings = Number(metrics.findings_blocker ?? 0) + Number(metrics.findings_major ?? 0);
+    recommend.fix = openFindings > 0;
+    const dir = path.dirname(path.resolve(file));
+    const fixReport = path.join(dir, 'fix-report.md');
+    const scope = readScope(dir);
+    const fixChosen = scope ? scope.fix : undefined;
+    // The fix step is offered once, after test, and only when a blocker or a
+    // major finding is open. The user decides; a declined fix goes to the
+    // backlog. A fix-report already on disk means the one fix call was spent.
+    if (openFindings > 0 && !fs.existsSync(fixReport) && fixChosen === undefined) {
+      decision = 'ask_fix';
+      reason = `${openFindings} blocker/major finding(s); ask the user whether to run fix`;
+    } else if (openFindings > 0 && !fs.existsSync(fixReport) && fixChosen === true) {
+      decision = 'fix';
+      reason = 'scope says fix next';
+    } else {
+      decision = 'close';
+      const left = openFindings > 0 ? `; ${openFindings} finding(s) in the backlog` : '';
+      reason = `${metrics.checks_passed}/${metrics.checks_total} checks passed; ${metrics.findings_major} major, ${metrics.findings_minor} minor, ${metrics.ac_deviations} AC deviation(s)${left}`;
+    }
   }
 }
 

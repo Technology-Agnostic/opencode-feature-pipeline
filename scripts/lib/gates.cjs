@@ -51,11 +51,25 @@ const GATES = {
   },
   plan: {
     script: 'check-plan.cjs',
-    args: (dir) => ['--analysis', path.join(dir, 'analysis.md')],
+    args: (dir) => [
+      '--analysis', path.join(dir, 'analysis.md'),
+      '--test-plan', path.join(dir, 'test-plan.md'),
+      '--design', path.join(dir, 'design.md'),
+      '--architecture', path.join(dir, 'architecture.md'),
+    ],
+  },
+  'test-plan': {
+    script: 'check-sections.cjs',
+    args: () => ['--require', '## Checks', '## Copy checks', '## Notes',
+      '--table', '## Checks', '--columns', 'V,AC,Scenario,Expected,Viewport,Seed', '--min-rows', '0'],
+  },
+  fix: {
+    script: 'check-fix.cjs',
+    args: (dir) => ['--test', path.join(dir, 'test-report.md'), '--test-plan', path.join(dir, 'test-plan.md')],
   },
   test: {
     script: 'check-test.cjs',
-    args: (dir) => ['--plan', path.join(dir, 'plan.md'), '--analysis', path.join(dir, 'analysis.md')],
+    args: (dir) => ['--test-plan', path.join(dir, 'test-plan.md'), '--analysis', path.join(dir, 'analysis.md')],
   },
 };
 

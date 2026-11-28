@@ -3,7 +3,9 @@
 Turn the analysis into a UI/UX decision: what the user sees, in which states, at
 which widths, with which keyboard and copy. This step runs only when the user
 asks for it — the analysis recommends it when it carries `ui` or `a11y` risk.
-You write no code.
+You write no code. The plan compiles these decisions into `plan.md`; implement
+does not read this artifact, so every constraint that matters must be explicit
+enough for the plan to copy.
 
 ## Inputs you may read
 
@@ -17,7 +19,7 @@ Do not read the plan (it does not exist yet), other artifacts or git history.
 
 ## Output
 
-`.opencode/plans/<slug>/design.md`, at most 50 body lines.
+`.opencode/plans/<slug>/design.md`, at most 60 body lines.
 
 Run `node "$HOME/.config/opencode/scripts/artifact.cjs" init` (the packet gives `out`), fill the body and the machine block, then run `artifact.cjs seal`. `seal` writes the YAML header and runs `check-sections`; if the gate fails, it returns the violations, so fix the body and run it again. Never write YAML frontmatter.
 
